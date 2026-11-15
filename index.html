@@ -1,0 +1,2059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>FamilyCare Pro — Personal Health & Clinical Analytics</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+              900: '#134e4a',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+      overflow-x: hidden;
+    }
+    /* Hide scrollbars cleanly for horizontal avatar bar & pills */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* Smooth card elevation */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+    }
+    /* Safe area bottom padding for iPhone Home Indicator */
+    .pb-safe {
+      padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 16px));
+    }
+    .bottom-nav-safe {
+      padding-bottom: env(safe-area-inset-bottom, 12px);
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-teal-100 selection:text-teal-900">
+
+  <!-- Toast Notification Banner (Replaces alert) -->
+  <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md pointer-events-none transition-all duration-300 opacity-0 -translate-y-4">
+    <div id="toast-box" class="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-sm font-medium border border-slate-700/70">
+      <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+      <span id="toast-message" class="flex-1">Saved successfully</span>
+    </div>
+  </div>
+
+  <!-- App Container -->
+  <div id="app" class="max-w-3xl mx-auto min-h-screen flex flex-col">
+
+    <!-- Top Header -->
+    <header class="sticky top-0 z-30 bg-slate-900 text-white px-4 pt-3 pb-3.5 shadow-md">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-400 to-emerald-600 flex items-center justify-center shadow-inner">
+            <i class="fa-solid fa-heart-pulse text-white text-lg"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-base font-bold tracking-tight leading-none">FamilyCare Pro</h1>
+              <span id="sync-badge" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-800 text-teal-300 border border-slate-700">
+                <i class="fa-solid fa-database mr-1"></i>Local Vault
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-0.5">Personal Clinical & Vitals Analytics</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="openMemberModal()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 transition text-xs font-semibold text-teal-300 border border-slate-700 flex items-center gap-1.5">
+            <i class="fa-solid fa-user-plus"></i>
+            <span class="hidden sm:inline">Add Member</span>
+          </button>
+          <button onclick="switchTab('settings')" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 transition flex items-center justify-center text-slate-300 border border-slate-700" title="Settings & Cloud Sync">
+            <i class="fa-solid fa-gear"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Horizontal Scrollable Family Member Avatar Switcher -->
+      <div id="member-switcher" class="flex items-center gap-2.5 overflow-x-auto no-scrollbar pb-0.5">
+        <!-- Rendered dynamically via JS -->
+      </div>
+    </header>
+
+    <!-- Main Scrollable Content -->
+    <main class="flex-1 px-3.5 sm:px-5 pt-4 pb-safe space-y-4">
+
+      <!-- TAB 1: DASHBOARD & ANALYTICS -->
+      <section id="tab-dashboard" class="space-y-4">
+        <!-- Hero Health Snapshot Card -->
+        <div id="hero-card" class="rounded-3xl p-4 sm:p-5 transition-all duration-300 border shadow-sm">
+          <!-- Rendered dynamically based on active member & clinical alert status -->
+        </div>
+
+        <!-- Quick Action Strip -->
+        <div class="grid grid-cols-3 gap-2.5">
+          <button onclick="switchTab('vitals')" class="glass-card rounded-2xl p-3 flex flex-col items-center justify-center gap-1.5 hover:border-teal-400 active:scale-95 transition">
+            <div class="w-9 h-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
+              <i class="fa-solid fa-stethoscope"></i>
+            </div>
+            <span class="text-xs font-semibold text-slate-700">Log Vitals/Lab</span>
+          </button>
+
+          <button onclick="switchTab('symptoms')" class="glass-card rounded-2xl p-3 flex flex-col items-center justify-center gap-1.5 hover:border-amber-400 active:scale-95 transition">
+            <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <i class="fa-solid fa-temperature-three-quarters"></i>
+            </div>
+            <span class="text-xs font-semibold text-slate-700">Fever / Meds</span>
+          </button>
+
+          <button onclick="shareWhatsAppSummary()" class="glass-card rounded-2xl p-3 flex flex-col items-center justify-center gap-1.5 hover:border-emerald-400 active:scale-95 transition">
+            <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <i class="fa-brands fa-whatsapp text-base"></i>
+            </div>
+            <span class="text-xs font-semibold text-slate-700">Doctor Report</span>
+          </button>
+        </div>
+
+        <!-- Interactive Clinical Analytics Card -->
+        <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <i class="fa-solid fa-chart-line text-teal-600"></i>
+                Clinical Trend Analytics
+              </h2>
+              <p id="chart-subtitle" class="text-xs text-slate-500">Age & gender calibrated normal ranges</p>
+            </div>
+            <span id="chart-normal-badge" class="self-start sm:self-auto text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              Normal: --
+            </span>
+          </div>
+
+          <!-- Metric Selector Pills -->
+          <div id="chart-metric-pills" class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+            <!-- Rendered dynamically -->
+          </div>
+
+          <!-- Responsive Chart Container -->
+          <div class="relative w-full h-60 sm:h-68 bg-slate-50/70 rounded-2xl p-2.5 border border-slate-100">
+            <canvas id="health-chart"></canvas>
+            <div id="chart-empty-state" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+              <i class="fa-solid fa-chart-area text-slate-300 text-3xl mb-2"></i>
+              <p class="text-xs font-semibold text-slate-600">No readings recorded for this metric yet</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Tap "Log Vitals/Lab" to plot your first point</p>
+            </div>
+          </div>
+
+          <!-- Statistical Summary Cards (Min, Max, Avg, Delta) -->
+          <div id="chart-stats-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Latest Parameter Snapshot Grid (Age & Gender Calibrated) -->
+        <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Latest Vitals & Lab Panel</h2>
+              <p class="text-xs text-slate-500">Evaluated against age & gender reference intervals</p>
+            </div>
+            <button onclick="switchTab('history')" class="text-xs font-semibold text-teal-600 hover:text-teal-700">
+              Full Vault <i class="fa-solid fa-arrow-right ml-0.5"></i>
+            </button>
+          </div>
+
+          <div id="latest-vitals-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: VITALS & LAB LOGGER -->
+      <section id="tab-vitals" class="hidden space-y-4">
+        <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Record Vitals & Lab Report</h2>
+              <p class="text-xs text-slate-500">Logging for <span id="vital-form-member-name" class="font-semibold text-teal-700">Member</span></p>
+            </div>
+            <span id="vital-form-age-gender" class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
+              --
+            </span>
+          </div>
+
+          <!-- Category Tabs -->
+          <div class="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-2xl">
+            <button type="button" onclick="setVitalCategory('routine')" id="vcat-routine" class="vcat-btn py-2 px-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition">
+              Routine Vitals
+            </button>
+            <button type="button" onclick="setVitalCategory('diabetic')" id="vcat-diabetic" class="vcat-btn py-2 px-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 transition">
+              Sugar / HbA1c
+            </button>
+            <button type="button" onclick="setVitalCategory('cbp')" id="vcat-cbp" class="vcat-btn py-2 px-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 transition">
+              CBP (Blood)
+            </button>
+          </div>
+
+          <form id="vitals-form" onsubmit="handleSaveVitals(event)" class="space-y-4">
+            <!-- Timestamp -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Date & Time</label>
+                <input type="datetime-local" id="vital-timestamp" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium focus:bg-white focus:border-teal-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Lab / Clinic Name (Optional)</label>
+                <input type="text" id="vital-lab-name" placeholder="e.g., Apollo Diagnostics / Home" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:bg-white focus:border-teal-500 focus:outline-none" />
+              </div>
+            </div>
+
+            <!-- Dynamic Parameter Inputs with Real-Time Age/Gender Range Evaluation -->
+            <div id="vital-inputs-container" class="space-y-3">
+              <!-- Rendered dynamically per selected category -->
+            </div>
+
+            <!-- Google Drive Report Link & Clinical Notes -->
+            <div class="space-y-3 pt-2 border-t border-slate-100">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                  <i class="fa-brands fa-google-drive text-teal-600 mr-1"></i>Google Drive Report / Prescription Link (Optional)
+                </label>
+                <input type="url" id="vital-drive-url" placeholder="https://drive.google.com/file/d/..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:bg-white focus:border-teal-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Doctor / Clinical Notes</label>
+                <textarea id="vital-notes" rows="2" placeholder="e.g., Fasting 10 hrs before sample, morning reading..." class="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:bg-white focus:border-teal-500 focus:outline-none"></textarea>
+              </div>
+            </div>
+
+            <button type="submit" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-sm shadow-lg shadow-teal-600/20 active:scale-[0.99] transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-check-circle"></i>
+              Save Vitals & Evaluate Ranges
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- TAB 3: EPISODIC SYMPTOM & FEVER TRACKER -->
+      <section id="tab-symptoms" class="hidden space-y-4">
+        <!-- Active Medication Dose Timer Banner -->
+        <div id="last-dose-banner" class="rounded-2xl p-3.5 bg-indigo-50 border border-indigo-200 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+              <i class="fa-solid fa-pills"></i>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-indigo-950" id="last-dose-title">No recent fever medication logged</p>
+              <p class="text-[11px] text-indigo-700" id="last-dose-sub">Track Paracetamol/Antibiotic gaps safely</p>
+            </div>
+          </div>
+          <span id="last-dose-elapsed" class="text-xs font-bold px-2.5 py-1 rounded-xl bg-white text-indigo-700 border border-indigo-200 shrink-0">
+            --
+          </span>
+        </div>
+
+        <!-- Log Symptom / Fever Entry Form -->
+        <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Fever, Symptom & Dose Tracker</h2>
+              <p class="text-xs text-slate-500">Logging for <span id="symptom-form-member-name" class="font-semibold text-teal-700">Member</span></p>
+            </div>
+            <button type="button" onclick="shareWhatsAppSummary()" class="text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition">
+              <i class="fa-brands fa-whatsapp mr-1"></i>Send Log
+            </button>
+          </div>
+
+          <form id="symptom-form" onsubmit="handleSaveSymptom(event)" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Illness Episode Tag</label>
+                <input type="text" id="sym-episode" list="episode-suggestions" placeholder="e.g., Viral Fever - Nov 2026" value="Viral Fever" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium focus:bg-white focus:border-teal-500 focus:outline-none" />
+                <datalist id="episode-suggestions">
+                  <option value="Viral Fever"></option>
+                  <option value="Seasonal Cold & Cough"></option>
+                  <option value="Stomach Infection"></option>
+                  <option value="Migraine / Headache"></option>
+                  <option value="Routine Observation"></option>
+                </datalist>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Exact Date & Time</label>
+                <input type="datetime-local" id="sym-timestamp" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium focus:bg-white focus:border-teal-500 focus:outline-none" />
+              </div>
+            </div>
+
+            <!-- Temperature & Severity -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="text-xs font-semibold text-slate-700">Temperature (°F)</label>
+                  <span id="sym-temp-live-badge" class="text-[11px] font-semibold text-slate-400">Normal: 97.0–99.0 °F</span>
+                </div>
+                <input type="number" step="0.1" id="sym-temp" oninput="evaluateSymptomTemp(this.value)" placeholder="e.g., 101.4" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold focus:bg-white focus:border-teal-500 focus:outline-none" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Severity Level</label>
+                <div class="grid grid-cols-3 gap-1.5">
+                  <button type="button" onclick="selectSeverity('Mild')" data-sev="Mild" class="sev-btn py-2.5 rounded-xl text-xs font-bold border border-emerald-300 bg-emerald-50 text-emerald-800">Mild</button>
+                  <button type="button" onclick="selectSeverity('Moderate')" data-sev="Moderate" class="sev-btn py-2.5 rounded-xl text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-600">Moderate</button>
+                  <button type="button" onclick="selectSeverity('Severe')" data-sev="Severe" class="sev-btn py-2.5 rounded-xl text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-600">Severe</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Symptom Chips -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1.5">Observed Symptoms (Tap to select)</label>
+              <div id="symptom-chips" class="flex flex-wrap gap-2">
+                <!-- Rendered via JS -->
+              </div>
+            </div>
+
+            <!-- Medication Administered -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Medication Given & Dosage</label>
+                <input type="text" id="sym-med" placeholder="e.g., Dolo 650mg / Calpol 5ml" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:bg-white focus:border-teal-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Observation Notes</label>
+                <input type="text" id="sym-notes" placeholder="e.g., Cold sponging done, slept well" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:bg-white focus:border-teal-500 focus:outline-none" />
+              </div>
+            </div>
+
+            <button type="submit" class="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm shadow-lg active:scale-[0.99] transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-notes-medical text-teal-400"></i>
+              Log Symptom & Dose Entry
+            </button>
+          </form>
+        </div>
+
+        <!-- Timeline Feed for Selected Member -->
+        <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-bold text-slate-900">Episode & Symptom Timeline</h3>
+            <span id="symptom-count-badge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">0 entries</span>
+          </div>
+          <div id="symptom-timeline-list" class="space-y-3">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: FULL CLINICAL VAULT & HISTORY -->
+      <section id="tab-history" class="hidden space-y-4">
+        <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Clinical History & Report Vault</h2>
+              <p class="text-xs text-slate-500">Complete chronological medical log for <span id="history-member-name" class="font-semibold text-teal-700">Member</span></p>
+            </div>
+            <select id="history-filter" onchange="renderHistoryVault()" class="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 focus:outline-none">
+              <option value="all">All Records</option>
+              <option value="alerts">Out-of-Range Alerts Only</option>
+              <option value="vitals">Vitals & Lab Reports</option>
+              <option value="symptoms">Fever & Symptom Logs</option>
+            </select>
+          </div>
+
+          <div id="history-vault-list" class="space-y-3">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: SETTINGS, FAMILY ROSTER & FIREBASE CLOUD SYNC -->
+      <section id="tab-settings" class="hidden space-y-4">
+        <!-- Family Roster Management -->
+        <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Family Member Registry</h2>
+              <p class="text-xs text-slate-500">Manage profiles, photos, DOB & baseline anthropometrics</p>
+            </div>
+            <button onclick="openMemberModal()" class="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-sm transition">
+              <i class="fa-solid fa-plus mr-1"></i>New Member
+            </button>
+          </div>
+
+          <div id="settings-member-list" class="space-y-2.5">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Backup & Export -->
+        <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3">
+          <h2 class="text-base font-bold text-slate-900">Data Portability & Local Backup</h2>
+          <p class="text-xs text-slate-500">Your health records are stored privately in your browser. Export regular JSON/CSV backups anytime.</p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <button onclick="exportDataJSON()" class="py-2.5 px-3 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-file-code text-teal-400"></i>Export JSON
+            </button>
+            <button onclick="exportDataCSV()" class="py-2.5 px-3 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-file-csv"></i>Export CSV
+            </button>
+            <label class="py-2.5 px-3 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 text-xs font-bold hover:bg-slate-200 transition flex items-center justify-center gap-2 cursor-pointer">
+              <i class="fa-solid fa-upload text-slate-600"></i>Restore JSON
+              <input type="file" accept=".json" onchange="importDataJSON(event)" class="hidden" />
+            </label>
+          </div>
+        </div>
+
+        <!-- Optional Firebase Cloud Sync Configuration (Carpool Pro Architecture) -->
+        <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <i class="fa-solid fa-cloud text-amber-500"></i>
+                Firebase Cloud Sync (Optional)
+              </h2>
+              <p class="text-xs text-slate-500">Paste your Firebase Web App config JSON to sync across iPhones</p>
+            </div>
+            <span id="firebase-status-pill" class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
+              Offline Mode
+            </span>
+          </div>
+
+          <textarea id="firebase-config-input" rows="4" placeholder='{"apiKey": "...", "authDomain": "...", "projectId": "...", "storageBucket": "...", "messagingSenderId": "...", "appId": "..."}' class="w-full p-3 rounded-2xl border border-slate-200 bg-slate-50 font-mono text-xs focus:bg-white focus:border-teal-500 focus:outline-none"></textarea>
+
+          <div class="flex items-center gap-2.5">
+            <button onclick="saveFirebaseConfig()" class="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition">
+              Connect & Sync Firestore
+            </button>
+            <button onclick="resetDemoData()" class="py-2.5 px-3.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition">
+              Reset Sample Data
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Fixed Navigation Bar (Mobile-First iOS Style) -->
+    <nav class="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 bottom-nav-safe">
+      <div class="max-w-3xl mx-auto grid grid-cols-5 px-2 pt-2 pb-1">
+        <button onclick="switchTab('dashboard')" data-tab="dashboard" class="nav-btn flex flex-col items-center justify-center gap-1 py-1 text-teal-600">
+          <i class="fa-solid fa-chart-pie text-lg"></i>
+          <span class="text-[10px] font-bold">Dashboard</span>
+        </button>
+        <button onclick="switchTab('vitals')" data-tab="vitals" class="nav-btn flex flex-col items-center justify-center gap-1 py-1 text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-heart-circle-plus text-lg"></i>
+          <span class="text-[10px] font-semibold">Vitals/Lab</span>
+        </button>
+        <button onclick="switchTab('symptoms')" data-tab="symptoms" class="nav-btn flex flex-col items-center justify-center gap-1 py-1 text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-thermometer text-lg"></i>
+          <span class="text-[10px] font-semibold">Fever/Meds</span>
+        </button>
+        <button onclick="switchTab('history')" data-tab="history" class="nav-btn flex flex-col items-center justify-center gap-1 py-1 text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-folder-medical text-lg"></i>
+          <span class="text-[10px] font-semibold">Vault</span>
+        </button>
+        <button onclick="switchTab('settings')" data-tab="settings" class="nav-btn flex flex-col items-center justify-center gap-1 py-1 text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-users-gear text-lg"></i>
+          <span class="text-[10px] font-semibold">Family</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <!-- MODAL: ADD / EDIT FAMILY MEMBER -->
+  <div id="member-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[92vh] overflow-y-auto p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 id="member-modal-title" class="text-base font-bold text-slate-900">Add Family Member</h3>
+        <button onclick="closeMemberModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="member-form" onsubmit="handleSaveMember(event)" class="space-y-4">
+        <input type="hidden" id="mem-id" />
+
+        <!-- Profile Photo Upload with Client-Side Compression -->
+        <div class="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
+          <div class="relative w-16 h-16 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center overflow-hidden shrink-0 border-2 border-white shadow">
+            <img id="mem-photo-preview" src="" alt="Preview" class="hidden w-full h-full object-cover" />
+            <i id="mem-photo-placeholder" class="fa-solid fa-camera text-xl"></i>
+          </div>
+          <div class="flex-1">
+            <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-semibold cursor-pointer hover:bg-slate-800 transition">
+              <i class="fa-solid fa-image"></i> Upload Photo
+              <input type="file" id="mem-photo-input" accept="image/*" onchange="handlePhotoUpload(event)" class="hidden" />
+            </label>
+            <p class="text-[11px] text-slate-500 mt-1">Auto-compressed to 200×200 WebP for instant offline access.</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Full Name *</label>
+            <input type="text" id="mem-name" required placeholder="e.g., Aarav Sharma" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium focus:bg-white focus:border-teal-500 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Relationship *</label>
+            <select id="mem-relation" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium focus:bg-white focus:border-teal-500 focus:outline-none">
+              <option value="Self">Self</option>
+              <option value="Spouse">Spouse</option>
+              <option value="Child">Child</option>
+              <option value="Parent">Parent</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Date of Birth *</label>
+            <input type="date" id="mem-dob" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium focus:bg-white focus:border-teal-500 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Biological Gender *</label>
+            <select id="mem-gender" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium focus:bg-white focus:border-teal-500 focus:outline-none">
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+          <div class="col-span-2 sm:col-span-1">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Blood Group</label>
+            <select id="mem-blood" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium focus:bg-white focus:border-teal-500 focus:outline-none">
+              <option value="O+">O+</option>
+              <option value="O-">O-</option>
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Height (cm)</label>
+            <input type="number" step="0.1" id="mem-height" placeholder="172" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium focus:bg-white focus:border-teal-500 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Weight (kg)</label>
+            <input type="number" step="0.1" id="mem-weight" placeholder="70" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium focus:bg-white focus:border-teal-500 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Mobile (Opt.)</label>
+            <input type="tel" id="mem-mobile" placeholder="+91 98..." class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium focus:bg-white focus:border-teal-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Known Allergies</label>
+            <input type="text" id="mem-allergies" placeholder="e.g., Penicillin, Dust, None" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:bg-white focus:border-teal-500 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Chronic Conditions</label>
+            <input type="text" id="mem-conditions" placeholder="e.g., Pre-Diabetic, Mild Asthma" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:bg-white focus:border-teal-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2.5 pt-2">
+          <button type="submit" class="flex-1 py-3 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-md transition">
+            Save Family Profile
+          </button>
+          <button type="button" onclick="closeMemberModal()" class="px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm transition">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Firebase SDK (Modular Compat for Dynamic Config) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    /*************************************************************************
+     * 1. CLINICAL PARAMETER CATALOG & AGE/GENDER REFERENCE RANGE ENGINE
+     *************************************************************************/
+    const CLINICAL_PARAMS = {
+      temp: {
+        key: 'temp', label: 'Temperature', unit: '°F', category: 'routine', step: '0.1', placeholder: '98.6',
+        getRange: (age, gender) => ({ min: 97.0, max: 99.0, warnLow: 95.5, warnHigh: 100.3 })
+      },
+      sysBP: {
+        key: 'sysBP', label: 'Systolic BP', unit: 'mmHg', category: 'routine', step: '1', placeholder: '120',
+        getRange: (age, gender) => {
+          if (age < 12) return { min: 90, max: 115, warnLow: 80, warnHigh: 125 };
+          if (age < 18) return { min: 100, max: 120, warnLow: 90, warnHigh: 130 };
+          return { min: 90, max: 120, warnLow: 85, warnHigh: 139 };
+        }
+      },
+      diaBP: {
+        key: 'diaBP', label: 'Diastolic BP', unit: 'mmHg', category: 'routine', step: '1', placeholder: '80',
+        getRange: (age, gender) => {
+          if (age < 12) return { min: 55, max: 75, warnLow: 50, warnHigh: 82 };
+          return { min: 60, max: 80, warnLow: 55, warnHigh: 89 };
+        }
+      },
+      pulse: {
+        key: 'pulse', label: 'Pulse Rate', unit: 'bpm', category: 'routine', step: '1', placeholder: '74',
+        getRange: (age, gender) => {
+          if (age < 6) return { min: 80, max: 125, warnLow: 70, warnHigh: 140 };
+          if (age < 12) return { min: 70, max: 110, warnLow: 60, warnHigh: 125 };
+          return { min: 60, max: 100, warnLow: 50, warnHigh: 110 };
+        }
+      },
+      spo2: {
+        key: 'spo2', label: 'SpO2 (Oxygen)', unit: '%', category: 'routine', step: '1', placeholder: '98',
+        getRange: (age, gender) => ({ min: 95, max: 100, warnLow: 92, warnHigh: 100 })
+      },
+      weight: {
+        key: 'weight', label: 'Weight', unit: 'kg', category: 'routine', step: '0.1', placeholder: '70.0',
+        getRange: (age, gender) => {
+          if (age < 12) return { min: 14, max: 42, warnLow: 10, warnHigh: 50 };
+          if (gender === 'Female') return { min: 45, max: 72, warnLow: 40, warnHigh: 85 };
+          return { min: 55, max: 82, warnLow: 48, warnHigh: 95 };
+        }
+      },
+      height: {
+        key: 'height', label: 'Height', unit: 'cm', category: 'routine', step: '0.5', placeholder: '170',
+        getRange: (age, gender) => {
+          if (age < 12) return { min: 95, max: 150, warnLow: 85, warnHigh: 160 };
+          if (gender === 'Female') return { min: 148, max: 175, warnLow: 140, warnHigh: 185 };
+          return { min: 160, max: 188, warnLow: 150, warnHigh: 198 };
+        }
+      },
+      // Diabetic / Metabolic
+      fbs: {
+        key: 'fbs', label: 'FBS (Fasting Sugar)', unit: 'mg/dL', category: 'diabetic', step: '1', placeholder: '92',
+        getRange: (age, gender) => ({ min: 70, max: 99, warnLow: 60, warnHigh: 125 })
+      },
+      plbs: {
+        key: 'plbs', label: 'PLBS (Post-Lunch)', unit: 'mg/dL', category: 'diabetic', step: '1', placeholder: '128',
+        getRange: (age, gender) => ({ min: 70, max: 140, warnLow: 65, warnHigh: 199 })
+      },
+      rbs: {
+        key: 'rbs', label: 'RBS (Random Sugar)', unit: 'mg/dL', category: 'diabetic', step: '1', placeholder: '115',
+        getRange: (age, gender) => ({ min: 70, max: 140, warnLow: 60, warnHigh: 199 })
+      },
+      hba1c: {
+        key: 'hba1c', label: 'HbA1c', unit: '%', category: 'diabetic', step: '0.1', placeholder: '5.4',
+        getRange: (age, gender) => ({ min: 4.0, max: 5.6, warnLow: 3.8, warnHigh: 6.4 })
+      },
+      // Complete Blood Picture (CBP)
+      hb: {
+        key: 'hb', label: 'Hemoglobin (Hb)', unit: 'g/dL', category: 'cbp', step: '0.1', placeholder: '14.2',
+        getRange: (age, gender) => {
+          if (age < 12) return { min: 11.5, max: 15.5, warnLow: 10.0, warnHigh: 16.5 };
+          if (gender === 'Female') return { min: 12.0, max: 15.5, warnLow: 10.5, warnHigh: 16.5 };
+          return { min: 13.5, max: 17.5, warnLow: 11.5, warnHigh: 18.5 };
+        }
+      },
+      wbc: {
+        key: 'wbc', label: 'Total WBC Count', unit: '/µL', category: 'cbp', step: '100', placeholder: '7200',
+        getRange: (age, gender) => {
+          if (age < 12) return { min: 5000, max: 13500, warnLow: 4000, warnHigh: 15000 };
+          return { min: 4000, max: 11000, warnLow: 3200, warnHigh: 13000 };
+        }
+      },
+      platelets: {
+        key: 'platelets', label: 'Platelet Count', unit: 'lakhs/µL', category: 'cbp', step: '0.05', placeholder: '2.45',
+        getRange: (age, gender) => ({ min: 1.50, max: 4.50, warnLow: 1.00, warnHigh: 5.00 })
+      },
+      rbc: {
+        key: 'rbc', label: 'Total RBC Count', unit: 'mil/µL', category: 'cbp', step: '0.1', placeholder: '4.9',
+        getRange: (age, gender) => {
+          if (age < 12) return { min: 4.0, max: 5.2, warnLow: 3.6, warnHigh: 5.6 };
+          if (gender === 'Female') return { min: 3.8, max: 5.1, warnLow: 3.4, warnHigh: 5.5 };
+          return { min: 4.5, max: 5.9, warnLow: 4.0, warnHigh: 6.3 };
+        }
+      },
+      pcv: {
+        key: 'pcv', label: 'PCV / Hematocrit', unit: '%', category: 'cbp', step: '0.1', placeholder: '42.0',
+        getRange: (age, gender) => {
+          if (age < 12) return { min: 35, max: 45, warnLow: 31, warnHigh: 48 };
+          if (gender === 'Female') return { min: 36, max: 46, warnLow: 32, warnHigh: 49 };
+          return { min: 40, max: 52, warnLow: 35, warnHigh: 55 };
+        }
+      }
+    };
+
+    const SYMPTOM_TAGS = [
+      'Fever', 'Chills', 'Headache', 'Cough', 'Sore Throat',
+      'Runny Nose', 'Body Pain', 'Fatigue', 'Nausea', 'Loss of Appetite'
+    ];
+
+    /*************************************************************************
+     * 2. APPLICATION STATE & SAMPLE FAMILY DATASET
+     *************************************************************************/
+    const STORAGE_KEY = 'familycare_pro_v1_data';
+    const FB_CONFIG_KEY = 'familycare_pro_v1_fb_config';
+
+    let state = {
+      members: [],
+      vitalsLogs: [],
+      symptomLogs: [],
+      selectedMemberId: null,
+      activeTab: 'dashboard',
+      activeVitalCategory: 'routine',
+      selectedChartMetric: 'temp',
+      selectedSeverity: 'Mild',
+      selectedSymptoms: [],
+      tempPhotoDataUrl: ''
+    };
+
+    let healthChartInstance = null;
+    let firestoreDb = null;
+
+    function calculateAge(dobString) {
+      if (!dobString) return 30;
+      const dob = new Date(dobString);
+      const now = new Date();
+      let age = now.getFullYear() - dob.getFullYear();
+      const m = now.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) {
+        age--;
+      }
+      return Math.max(0, age);
+    }
+
+    function calculateBMI(weightKg, heightCm) {
+      if (!weightKg || !heightCm || heightCm <= 0) return null;
+      const hMeters = heightCm / 100;
+      const bmi = weightKg / (hMeters * hMeters);
+      let category = 'Normal';
+      let color = 'emerald';
+      if (bmi < 18.5) { category = 'Underweight'; color = 'amber'; }
+      else if (bmi >= 25 && bmi < 30) { category = 'Overweight'; color = 'amber'; }
+      else if (bmi >= 30) { category = 'Obese'; color = 'rose'; }
+      return { value: bmi.toFixed(1), category, color };
+    }
+
+    function evaluateClinicalValue(paramKey, rawVal, age, gender) {
+      const val = parseFloat(rawVal);
+      if (isNaN(val) || !CLINICAL_PARAMS[paramKey]) return null;
+      const def = CLINICAL_PARAMS[paramKey];
+      const range = def.getRange(age, gender);
+      const rangeText = `${range.min}–${range.max} ${def.unit}`;
+
+      if (val >= range.min && val <= range.max) {
+        return { status: 'normal', label: 'Normal', badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200', dotClass: 'bg-emerald-500', hex: '#10b981', rangeText, range };
+      }
+      if (val >= range.warnLow && val <= range.warnHigh) {
+        const dir = val < range.min ? 'Borderline Low' : 'Borderline High';
+        return { status: 'borderline', label: dir, badgeClass: 'bg-amber-100 text-amber-800 border-amber-200', dotClass: 'bg-amber-500', hex: '#f59e0b', rangeText, range };
+      }
+      const dir = val < range.warnLow ? 'Critical Low' : 'High Alert';
+      return { status: 'alert', label: dir, badgeClass: 'bg-rose-100 text-rose-800 border-rose-200', dotClass: 'bg-rose-500', hex: '#f43f5e', rangeText, range };
+    }
+
+    function getSeedData() {
+      const now = new Date();
+      const daysAgo = (d, h = 9) => {
+        const dt = new Date(now.getTime() - d * 86400000);
+        dt.setHours(h, 15, 0, 0);
+        return dt.toISOString().slice(0, 16);
+      };
+
+      return {
+        selectedMemberId: 'mem_self',
+        members: [
+          {
+            id: 'mem_self',
+            name: 'Karthik (Self)',
+            relation: 'Self',
+            dob: '1989-06-14',
+            gender: 'Male',
+            bloodGroup: 'O+',
+            height: 175,
+            weight: 76.5,
+            mobile: '+91 98480 11223',
+            allergies: 'None',
+            conditions: 'Borderline Fasting Sugar',
+            photo: ''
+          },
+          {
+            id: 'mem_spouse',
+            name: 'Spandana',
+            relation: 'Spouse',
+            dob: '1991-11-22',
+            gender: 'Female',
+            bloodGroup: 'B+',
+            height: 162,
+            weight: 60.0,
+            mobile: '+91 98480 44556',
+            allergies: 'Dust',
+            conditions: 'Mild Anemia Watch',
+            photo: ''
+          },
+          {
+            id: 'mem_daughter',
+            name: 'Aadhya (Daughter)',
+            relation: 'Child',
+            dob: '2019-04-10',
+            gender: 'Female',
+            bloodGroup: 'O+',
+            height: 121,
+            weight: 23.4,
+            mobile: '',
+            allergies: 'None',
+            conditions: 'None',
+            photo: ''
+          },
+          {
+            id: 'mem_father',
+            name: 'Raghavendra Rao (Father)',
+            relation: 'Parent',
+            dob: '1958-08-05',
+            gender: 'Male',
+            bloodGroup: 'A+',
+            height: 169,
+            weight: 72.0,
+            mobile: '+91 94401 77889',
+            allergies: 'Sulfa Drugs',
+            conditions: 'Type 2 Diabetes, Hypertension',
+            photo: ''
+          }
+        ],
+        vitalsLogs: [
+          // Karthik logs
+          { id: 'v1', memberId: 'mem_self', timestamp: daysAgo(60, 8), labName: 'Vijaya Diagnostics', values: { fbs: 106, plbs: 148, hba1c: 5.8, hb: 14.8, platelets: 2.6, wbc: 6800, sysBP: 124, diaBP: 82, weight: 78.0 }, driveUrl: 'https://drive.google.com', notes: 'Quarterly metabolic check' },
+          { id: 'v2', memberId: 'mem_self', timestamp: daysAgo(15, 8), labName: 'Apollo Diagnostics', values: { fbs: 98, plbs: 134, hba1c: 5.6, hb: 15.1, platelets: 2.75, wbc: 7100, sysBP: 118, diaBP: 78, weight: 76.5 }, driveUrl: 'https://drive.google.com', notes: 'Improved after morning walks' },
+          // Spandana logs
+          { id: 'v3', memberId: 'mem_spouse', timestamp: daysAgo(20, 9), labName: 'Apollo Diagnostics', values: { hb: 11.4, rbc: 4.1, platelets: 2.9, wbc: 6400, fbs: 88, temp: 98.4, weight: 60.0 }, driveUrl: '', notes: 'Started iron + folic acid supplement' },
+          // Daughter logs (Recent viral fever recovery)
+          { id: 'v4', memberId: 'mem_daughter', timestamp: daysAgo(2, 10), labName: 'Home Monitor', values: { temp: 101.6, pulse: 112, spo2: 98, weight: 23.4 }, driveUrl: '', notes: 'Day 1 viral fever' },
+          { id: 'v5', memberId: 'mem_daughter', timestamp: daysAgo(1, 18), labName: 'Home Monitor', values: { temp: 99.8, pulse: 98, spo2: 99 }, driveUrl: '', notes: 'Fever subsiding' },
+          { id: 'v6', memberId: 'mem_daughter', timestamp: daysAgo(0, 8), labName: 'Home Monitor', values: { temp: 98.4, pulse: 88, spo2: 99 }, driveUrl: '', notes: 'Back to normal temperature' },
+          // Father logs
+          { id: 'v7', memberId: 'mem_father', timestamp: daysAgo(30, 8), labName: 'Lucid Diagnostics', values: { fbs: 138, plbs: 192, hba1c: 6.9, sysBP: 136, diaBP: 86, hb: 13.6, platelets: 2.2 }, driveUrl: 'https://drive.google.com', notes: 'Review with Dr. Reddy' },
+          { id: 'v8', memberId: 'mem_father', timestamp: daysAgo(5, 8), labName: 'Home Check', values: { fbs: 118, plbs: 162, sysBP: 128, diaBP: 80 }, driveUrl: '', notes: 'Good glycemic control' }
+        ],
+        symptomLogs: [
+          {
+            id: 's1',
+            memberId: 'mem_daughter',
+            episode: 'Viral Fever - Nov 2026',
+            timestamp: daysAgo(1, 14),
+            temp: 101.4,
+            severity: 'Moderate',
+            symptoms: ['Fever', 'Fatigue', 'Loss of Appetite'],
+            medication: 'Calpol 250mg (5ml)',
+            notes: 'Given after lunch; tepid sponging done'
+          },
+          {
+            id: 's2',
+            memberId: 'mem_daughter',
+            episode: 'Viral Fever - Nov 2026',
+            timestamp: daysAgo(0, 7),
+            temp: 98.5,
+            severity: 'Mild',
+            symptoms: ['Runny Nose'],
+            medication: 'Saline Nasal Drops',
+            notes: 'Slept peacefully overnight, active in morning'
+          }
+        ]
+      };
+    }
+
+    /*************************************************************************
+     * 3. STORAGE & OPTIONAL FIREBASE CLOUD SYNC
+     *************************************************************************/
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          state.members = parsed.members || [];
+          state.vitalsLogs = parsed.vitalsLogs || [];
+          state.symptomLogs = parsed.symptomLogs || [];
+          state.selectedMemberId = parsed.selectedMemberId || (state.members[0]?.id || null);
+        } else {
+          const seed = getSeedData();
+          state.members = seed.members;
+          state.vitalsLogs = seed.vitalsLogs;
+          state.symptomLogs = seed.symptomLogs;
+          state.selectedMemberId = seed.selectedMemberId;
+          saveState();
+        }
+      } catch (err) {
+        console.error('Failed to load state:', err);
+      }
+      initFirebaseFromStorage();
+    }
+
+    function saveState() {
+      try {
+        const payload = {
+          members: state.members,
+          vitalsLogs: state.vitalsLogs,
+          symptomLogs: state.symptomLogs,
+          selectedMemberId: state.selectedMemberId,
+          updatedAt: new Date().toISOString()
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        if (firestoreDb) {
+          firestoreDb.collection('familycare_vault').doc('household_v1').set(payload, { merge: true })
+            .catch(e => console.warn('Firestore background sync error:', e));
+        }
+      } catch (err) {
+        showToast('Storage warning: ' + err.message, 'error');
+      }
+    }
+
+    function initFirebaseFromStorage() {
+      const savedCfg = localStorage.getItem(FB_CONFIG_KEY);
+      if (!savedCfg) return;
+      document.getElementById('firebase-config-input').value = savedCfg;
+      try {
+        const config = JSON.parse(savedCfg);
+        if (!firebase.apps.length) {
+          firebase.initializeApp(config);
+        }
+        firestoreDb = firebase.firestore();
+        document.getElementById('sync-badge').innerHTML = '<i class="fa-solid fa-cloud-check mr-1"></i>Cloud Synced';
+        document.getElementById('sync-badge').className = 'text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700';
+        document.getElementById('firebase-status-pill').textContent = 'Connected to Firestore';
+        document.getElementById('firebase-status-pill').className = 'text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800';
+
+        // Real-time listener
+        firestoreDb.collection('familycare_vault').doc('household_v1').onSnapshot((doc) => {
+          if (doc.exists) {
+            const data = doc.data();
+            if (data.members && data.members.length) {
+              state.members = data.members;
+              state.vitalsLogs = data.vitalsLogs || [];
+              state.symptomLogs = data.symptomLogs || [];
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+              renderAll();
+            }
+          }
+        });
+      } catch (e) {
+        console.warn('Firebase init failed:', e);
+      }
+    }
+
+    function saveFirebaseConfig() {
+      const raw = document.getElementById('firebase-config-input').value.trim();
+      if (!raw) {
+        localStorage.removeItem(FB_CONFIG_KEY);
+        firestoreDb = null;
+        showToast('Switched to Local Vault mode');
+        return;
+      }
+      try {
+        JSON.parse(raw);
+        localStorage.setItem(FB_CONFIG_KEY, raw);
+        initFirebaseFromStorage();
+        saveState();
+        showToast('Firebase Firestore connected & synced!');
+      } catch (e) {
+        showToast('Invalid JSON format in Firebase config', 'error');
+      }
+    }
+
+    /*************************************************************************
+     * 4. HELPER UTILITIES (TOAST, MEMBER STATUS, PHOTO COMPRESSION)
+     *************************************************************************/
+    function showToast(msg, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const icon = document.getElementById('toast-icon');
+      const text = document.getElementById('toast-message');
+      text.textContent = msg;
+      icon.className = type === 'error'
+        ? 'fa-solid fa-triangle-exclamation text-rose-400 text-base'
+        : 'fa-solid fa-circle-check text-emerald-400 text-base';
+      container.classList.remove('opacity-0', '-translate-y-4');
+      container.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        container.classList.add('opacity-0', '-translate-y-4');
+        container.classList.remove('opacity-100', 'translate-y-0');
+      }, 3000);
+    }
+
+    function getActiveMember() {
+      return state.members.find(m => m.id === state.selectedMemberId) || state.members[0];
+    }
+
+    function getMemberLatestReadings(memberId) {
+      const logs = state.vitalsLogs
+        .filter(l => l.memberId === memberId)
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      const latestMap = {};
+      for (const log of logs) {
+        if (!log.values) continue;
+        for (const [key, val] of Object.entries(log.values)) {
+          if (val !== '' && val !== null && val !== undefined && !latestMap[key]) {
+            latestMap[key] = { value: parseFloat(val), timestamp: log.timestamp, labName: log.labName, driveUrl: log.driveUrl };
+          }
+        }
+      }
+      return latestMap;
+    }
+
+    function getMemberHealthSummary(member) {
+      const age = calculateAge(member.dob);
+      const latestMap = getMemberLatestReadings(member.id);
+      const alerts = [];
+      const borderlines = [];
+
+      for (const [key, entry] of Object.entries(latestMap)) {
+        const evalRes = evaluateClinicalValue(key, entry.value, age, member.gender);
+        if (evalRes) {
+          if (evalRes.status === 'alert') alerts.push({ param: CLINICAL_PARAMS[key].label, value: entry.value, unit: CLINICAL_PARAMS[key].unit, evalRes });
+          else if (evalRes.status === 'borderline') borderlines.push({ param: CLINICAL_PARAMS[key].label, value: entry.value, unit: CLINICAL_PARAMS[key].unit, evalRes });
+        }
+      }
+
+      let overallStatus = 'normal';
+      if (alerts.length > 0) overallStatus = 'alert';
+      else if (borderlines.length > 0) overallStatus = 'borderline';
+
+      return { age, latestMap, alerts, borderlines, overallStatus };
+    }
+
+    // Client-side Canvas Compression for Member Photos (200x200)
+    function handlePhotoUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const size = 200;
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          // Center crop square
+          const minDim = Math.min(img.width, img.height);
+          const sx = (img.width - minDim) / 2;
+          const sy = (img.height - minDim) / 2;
+          ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          state.tempPhotoDataUrl = compressedDataUrl;
+          const preview = document.getElementById('mem-photo-preview');
+          preview.src = compressedDataUrl;
+          preview.classList.remove('hidden');
+          document.getElementById('mem-photo-placeholder').classList.add('hidden');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    /*************************************************************************
+     * 5. NAVIGATION & RENDERING CONTROLLERS
+     *************************************************************************/
+    function switchTab(tabName) {
+      state.activeTab = tabName;
+      ['dashboard', 'vitals', 'symptoms', 'history', 'settings'].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.toggle('hidden', t !== tabName);
+      });
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        const isCurrent = btn.dataset.tab === tabName;
+        btn.className = isCurrent
+          ? 'nav-btn flex flex-col items-center justify-center gap-1 py-1 text-teal-600'
+          : 'nav-btn flex flex-col items-center justify-center gap-1 py-1 text-slate-400 hover:text-slate-700';
+      });
+      renderAll();
+    }
+
+    function selectMember(memberId) {
+      state.selectedMemberId = memberId;
+      saveState();
+      renderAll();
+    }
+
+    function renderAll() {
+      if (!state.members.length) return;
+      renderMemberSwitcher();
+      renderHeroCard();
+      renderChartSection();
+      renderLatestVitalsGrid();
+      renderVitalsForm();
+      renderSymptomSection();
+      renderHistoryVault();
+      renderSettingsMembers();
+    }
+
+    function renderMemberSwitcher() {
+      const container = document.getElementById('member-switcher');
+      container.innerHTML = state.members.map(m => {
+        const isSelected = m.id === state.selectedMemberId;
+        const summary = getMemberHealthSummary(m);
+        const dotColor = summary.overallStatus === 'alert' ? 'bg-rose-500' : (summary.overallStatus === 'borderline' ? 'bg-amber-400' : 'bg-emerald-400');
+        const initials = m.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
+        return `
+          <button onclick="selectMember('${m.id}')" class="flex items-center gap-2.5 px-3 py-1.5 rounded-2xl shrink-0 transition border ${
+            isSelected
+              ? 'bg-white text-slate-900 border-white shadow-md'
+              : 'bg-slate-800/90 text-slate-300 border-slate-700/80 hover:bg-slate-800'
+          }">
+            <div class="relative w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs overflow-hidden shrink-0 ${
+              isSelected ? 'bg-teal-100 text-teal-800' : 'bg-slate-700 text-teal-300'
+            }">
+              ${m.photo ? `<img src="${m.photo}" alt="${m.name}" class="w-full h-full object-cover" />` : initials}
+              <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ${dotColor} ring-2 ${isSelected ? 'ring-white' : 'ring-slate-800'}"></span>
+            </div>
+            <div class="text-left">
+              <div class="text-xs font-bold leading-tight">${m.name.split(' ')[0]}</div>
+              <div class="text-[10px] ${isSelected ? 'text-slate-500' : 'text-slate-400'}">${summary.age}y • ${m.bloodGroup}</div>
+            </div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function renderHeroCard() {
+      const m = getActiveMember();
+      if (!m) return;
+      const summary = getMemberHealthSummary(m);
+      const latestWeight = summary.latestMap.weight?.value || m.weight;
+      const latestHeight = summary.latestMap.height?.value || m.height;
+      const bmi = calculateBMI(latestWeight, latestHeight);
+      const initials = m.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
+      // Dynamic background tint based on clinical alert status
+      let cardStyle = 'bg-gradient-to-br from-teal-50 via-white to-emerald-50/70 border-teal-200/80';
+      let statusBanner = `
+        <div class="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-100/80 text-emerald-900 text-xs font-semibold border border-emerald-200">
+          <i class="fa-solid fa-shield-heart text-emerald-600"></i>
+          <span>All tracked vitals & labs are within optimal age/gender range.</span>
+        </div>
+      `;
+
+      if (summary.overallStatus === 'alert') {
+        cardStyle = 'bg-gradient-to-br from-rose-50 via-white to-amber-50/60 border-rose-200';
+        const alertText = summary.alerts.map(a => `${a.param}: ${a.value} ${a.unit} (${a.evalRes.label})`).join(' • ');
+        statusBanner = `
+          <div class="flex items-start gap-2 px-3 py-2 rounded-xl bg-rose-100/90 text-rose-950 text-xs font-semibold border border-rose-200">
+            <i class="fa-solid fa-triangle-exclamation text-rose-600 mt-0.5"></i>
+            <div><span class="font-bold">Clinical Attention:</span> ${alertText}</div>
+          </div>
+        `;
+      } else if (summary.overallStatus === 'borderline') {
+        cardStyle = 'bg-gradient-to-br from-amber-50 via-white to-orange-50/50 border-amber-200';
+        const warnText = summary.borderlines.map(b => `${b.param}: ${b.value} ${b.unit}`).join(' • ');
+        statusBanner = `
+          <div class="flex items-start gap-2 px-3 py-2 rounded-xl bg-amber-100/90 text-amber-950 text-xs font-semibold border border-amber-200">
+            <i class="fa-solid fa-circle-exclamation text-amber-600 mt-0.5"></i>
+            <div><span class="font-bold">Borderline Watch:</span> ${warnText}</div>
+          </div>
+        `;
+      }
+
+      const heroEl = document.getElementById('hero-card');
+      heroEl.className = `rounded-3xl p-4 sm:p-5 transition-all duration-300 border shadow-sm space-y-3.5 ${cardStyle}`;
+      heroEl.innerHTML = `
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3.5">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-600 to-slate-800 text-white flex items-center justify-center font-extrabold text-xl overflow-hidden shadow-md border-2 border-white shrink-0">
+              ${m.photo ? `<img src="${m.photo}" alt="${m.name}" class="w-full h-full object-cover" />` : initials}
+            </div>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <h2 class="text-lg font-extrabold text-slate-900 leading-tight">${m.name}</h2>
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-900 text-white">${m.relation}</span>
+              </div>
+              <p class="text-xs text-slate-600 font-medium mt-0.5">
+                ${summary.age} Years • ${m.gender} • Blood <span class="font-bold text-rose-600">${m.bloodGroup}</span>
+              </p>
+              <div class="flex items-center gap-2 flex-wrap mt-1.5">
+                ${m.allergies && m.allergies !== 'None' ? `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-rose-100 text-rose-800"><i class="fa-solid fa-hand-dots mr-1"></i>Allergy: ${m.allergies}</span>` : ''}
+                ${m.conditions && m.conditions !== 'None' ? `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800"><i class="fa-solid fa-file-medical mr-1"></i>${m.conditions}</span>` : ''}
+              </div>
+            </div>
+          </div>
+
+          <button onclick="openMemberModal('${m.id}')" class="w-8 h-8 rounded-xl bg-white/80 hover:bg-white border border-slate-200 flex items-center justify-center text-slate-600 shrink-0" title="Edit Profile">
+            <i class="fa-solid fa-pen text-xs"></i>
+          </button>
+        </div>
+
+        <!-- Anthropometrics Strip -->
+        <div class="grid grid-cols-3 gap-2 bg-white/80 rounded-2xl p-2.5 border border-slate-200/70">
+          <div class="text-center border-r border-slate-100">
+            <div class="text-[10px] font-semibold text-slate-400 uppercase">Height</div>
+            <div class="text-sm font-extrabold text-slate-800">${latestHeight || '--'} <span class="text-[11px] font-medium text-slate-500">cm</span></div>
+          </div>
+          <div class="text-center border-r border-slate-100">
+            <div class="text-[10px] font-semibold text-slate-400 uppercase">Weight</div>
+            <div class="text-sm font-extrabold text-slate-800">${latestWeight || '--'} <span class="text-[11px] font-medium text-slate-500">kg</span></div>
+          </div>
+          <div class="text-center">
+            <div class="text-[10px] font-semibold text-slate-400 uppercase">BMI</div>
+            <div class="text-sm font-extrabold text-slate-800">
+              ${bmi ? `${bmi.value} <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-${bmi.color}-100 text-${bmi.color}-800">${bmi.category}</span>` : '--'}
+            </div>
+          </div>
+        </div>
+
+        ${statusBanner}
+      `;
+    }
+
+    /*************************************************************************
+     * 6. INTERACTIVE CHART.JS ANALYTICS ENGINE
+     *************************************************************************/
+    const CHART_METRICS = [
+      { key: 'temp', label: 'Temp (°F)', icon: 'fa-temperature-half' },
+      { key: 'fbs', label: 'FBS Sugar', icon: 'fa-droplet' },
+      { key: 'plbs', label: 'PLBS Sugar', icon: 'fa-cubes-stacked' },
+      { key: 'hba1c', label: 'HbA1c %', icon: 'fa-percent' },
+      { key: 'hb', label: 'Hemoglobin', icon: 'fa-vial' },
+      { key: 'platelets', label: 'Platelets', icon: 'fa-bacterium' },
+      { key: 'sysBP', label: 'Systolic BP', icon: 'fa-heart-pulse' },
+      { key: 'weight', label: 'Weight (kg)', icon: 'fa-weight-scale' }
+    ];
+
+    function setChartMetric(metricKey) {
+      state.selectedChartMetric = metricKey;
+      renderChartSection();
+    }
+
+    function renderChartSection() {
+      const m = getActiveMember();
+      if (!m) return;
+      const age = calculateAge(m.dob);
+
+      // Render metric pills
+      const pillsContainer = document.getElementById('chart-metric-pills');
+      pillsContainer.innerHTML = CHART_METRICS.map(item => {
+        const active = item.key === state.selectedChartMetric;
+        return `
+          <button onclick="setChartMetric('${item.key}')" class="px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition flex items-center gap-1.5 ${
+            active
+              ? 'bg-slate-900 text-white shadow-sm'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }">
+            <i class="fa-solid ${item.icon} ${active ? 'text-teal-400' : 'text-slate-400'}"></i>
+            ${item.label}
+          </button>
+        `;
+      }).join('');
+
+      const metricKey = state.selectedChartMetric;
+      const paramDef = CLINICAL_PARAMS[metricKey];
+      const range = paramDef.getRange(age, m.gender);
+      document.getElementById('chart-normal-badge').textContent = `Normal (${age}y ${m.gender}): ${range.min}–${range.max} ${paramDef.unit}`;
+
+      // Gather chronological points from vitalsLogs (and symptomLogs if metric === 'temp')
+      let points = [];
+      state.vitalsLogs
+        .filter(l => l.memberId === m.id && l.values && l.values[metricKey] !== undefined && l.values[metricKey] !== '')
+        .forEach(l => {
+          points.push({ timestamp: l.timestamp, value: parseFloat(l.values[metricKey]) });
+        });
+
+      if (metricKey === 'temp') {
+        state.symptomLogs
+          .filter(s => s.memberId === m.id && s.temp !== undefined && s.temp !== '' && !isNaN(parseFloat(s.temp)))
+          .forEach(s => {
+            points.push({ timestamp: s.timestamp, value: parseFloat(s.temp) });
+          });
+      }
+
+      points.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+      const emptyState = document.getElementById('chart-empty-state');
+      const statsGrid = document.getElementById('chart-stats-grid');
+
+      if (points.length === 0) {
+        emptyState.classList.remove('hidden');
+        if (healthChartInstance) {
+          healthChartInstance.destroy();
+          healthChartInstance = null;
+        }
+        statsGrid.innerHTML = `
+          <div class="col-span-full text-center py-2 text-xs text-slate-400">
+            Log at least one ${paramDef.label} value to view Min, Max, Average & Trend Delta.
+          </div>
+        `;
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      const labels = points.map(p => {
+        const d = new Date(p.timestamp);
+        return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + (metricKey === 'temp' ? ` ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}` : '');
+      });
+      const values = points.map(p => p.value);
+      const pointColors = values.map(v => evaluateClinicalValue(metricKey, v, age, m.gender)?.hex || '#0d9488');
+
+      const ctx = document.getElementById('health-chart').getContext('2d');
+      if (healthChartInstance) healthChartInstance.destroy();
+
+      healthChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: `${paramDef.label} (${paramDef.unit})`,
+              data: values,
+              borderColor: '#0d9488',
+              backgroundColor: 'rgba(20, 184, 166, 0.14)',
+              borderWidth: 2.5,
+              tension: 0.32,
+              fill: true,
+              pointBackgroundColor: pointColors,
+              pointBorderColor: '#ffffff',
+              pointBorderWidth: 2,
+              pointRadius: 5.5,
+              pointHoverRadius: 7
+            },
+            {
+              label: 'Upper Normal Limit',
+              data: Array(values.length).fill(range.max),
+              borderColor: 'rgba(16, 185, 129, 0.5)',
+              borderDash: [5, 5],
+              borderWidth: 1.5,
+              pointRadius: 0,
+              fill: false
+            },
+            {
+              label: 'Lower Normal Limit',
+              data: Array(values.length).fill(range.min),
+              borderColor: 'rgba(148, 163, 184, 0.5)',
+              borderDash: [4, 4],
+              borderWidth: 1.2,
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#0f172a',
+              padding: 10,
+              cornerRadius: 10,
+              callbacks: {
+                afterLabel: (ctx) => {
+                  if (ctx.datasetIndex !== 0) return '';
+                  const ev = evaluateClinicalValue(metricKey, ctx.raw, age, m.gender);
+                  return ev ? `Status: ${ev.label} (Normal: ${ev.rangeText})` : '';
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 10, family: 'Inter' }, color: '#64748b' }
+            },
+            y: {
+              grid: { color: 'rgba(226, 232, 240, 0.6)' },
+              ticks: { font: { size: 10, family: 'Inter' }, color: '#64748b' }
+            }
+          }
+        }
+      });
+
+      // Compute Statistics
+      const minVal = Math.min(...values);
+      const maxVal = Math.max(...values);
+      const avgVal = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
+      const latestVal = values[values.length - 1];
+      const prevVal = values.length > 1 ? values[values.length - 2] : null;
+      const delta = prevVal !== null ? (latestVal - prevVal).toFixed(1) : null;
+      const deltaSign = delta > 0 ? `+${delta}` : delta;
+
+      statsGrid.innerHTML = `
+        <div class="bg-slate-50 rounded-2xl p-2.5 border border-slate-100">
+          <div class="text-[10px] font-semibold text-slate-400 uppercase">Latest</div>
+          <div class="text-sm font-extrabold text-slate-900 mt-0.5">${latestVal} <span class="text-[10px] font-normal text-slate-500">${paramDef.unit}</span></div>
+        </div>
+        <div class="bg-slate-50 rounded-2xl p-2.5 border border-slate-100">
+          <div class="text-[10px] font-semibold text-slate-400 uppercase">Average (${values.length})</div>
+          <div class="text-sm font-extrabold text-slate-900 mt-0.5">${avgVal} <span class="text-[10px] font-normal text-slate-500">${paramDef.unit}</span></div>
+        </div>
+        <div class="bg-slate-50 rounded-2xl p-2.5 border border-slate-100">
+          <div class="text-[10px] font-semibold text-slate-400 uppercase">Min / Max</div>
+          <div class="text-sm font-extrabold text-slate-900 mt-0.5">${minVal} – ${maxVal}</div>
+        </div>
+        <div class="bg-slate-50 rounded-2xl p-2.5 border border-slate-100">
+          <div class="text-[10px] font-semibold text-slate-400 uppercase">Vs Previous</div>
+          <div class="text-sm font-extrabold ${delta === null ? 'text-slate-400' : (delta == 0 ? 'text-slate-700' : 'text-teal-700')} mt-0.5">
+            ${delta !== null ? `${deltaSign} ${paramDef.unit}` : 'Baseline'}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderLatestVitalsGrid() {
+      const m = getActiveMember();
+      if (!m) return;
+      const { age, latestMap } = getMemberHealthSummary(m);
+      const container = document.getElementById('latest-vitals-grid');
+      const keys = Object.keys(latestMap);
+
+      if (keys.length === 0) {
+        container.innerHTML = `<p class="col-span-full text-xs text-slate-400 py-4 text-center">No vitals or lab reports logged yet for ${m.name}.</p>`;
+        return;
+      }
+
+      container.innerHTML = keys.map(key => {
+        const def = CLINICAL_PARAMS[key];
+        if (!def) return '';
+        const entry = latestMap[key];
+        const ev = evaluateClinicalValue(key, entry.value, age, m.gender);
+        const dateStr = new Date(entry.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' });
+
+        return `
+          <div class="p-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 flex items-center justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full ${ev.dotClass}"></span>
+                <span class="text-xs font-bold text-slate-800">${def.label}</span>
+              </div>
+              <div class="text-[11px] text-slate-500 mt-0.5">Normal: ${ev.rangeText}</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">${dateStr}${entry.labName ? ` • ${entry.labName}` : ''}</div>
+            </div>
+            <div class="text-right">
+              <div class="text-base font-extrabold text-slate-900">${entry.value} <span class="text-[11px] font-medium text-slate-500">${def.unit}</span></div>
+              <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border mt-0.5 ${ev.badgeClass}">
+                ${ev.label}
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    /*************************************************************************
+     * 7. VITALS & LAB LOGGER (WITH REAL-TIME RANGE FEEDBACK)
+     *************************************************************************/
+    function setVitalCategory(cat) {
+      state.activeVitalCategory = cat;
+      ['routine', 'diabetic', 'cbp'].forEach(c => {
+        const btn = document.getElementById(`vcat-${c}`);
+        btn.className = c === cat
+          ? 'vcat-btn py-2 px-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition'
+          : 'vcat-btn py-2 px-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 transition';
+      });
+      renderVitalsForm();
+    }
+
+    function renderVitalsForm() {
+      const m = getActiveMember();
+      if (!m) return;
+      const age = calculateAge(m.dob);
+
+      document.getElementById('vital-form-member-name').textContent = m.name;
+      document.getElementById('vital-form-age-gender').textContent = `${age} yrs • ${m.gender}`;
+
+      const tsInput = document.getElementById('vital-timestamp');
+      if (!tsInput.value) {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        tsInput.value = now.toISOString().slice(0, 16);
+      }
+
+      const params = Object.values(CLINICAL_PARAMS).filter(p => p.category === state.activeVitalCategory);
+      const container = document.getElementById('vital-inputs-container');
+
+      container.innerHTML = params.map(p => {
+        const range = p.getRange(age, m.gender);
+        return `
+          <div class="p-3 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-1.5">
+            <div class="flex items-center justify-between">
+              <label for="vinput-${p.key}" class="text-xs font-bold text-slate-800">${p.label} (${p.unit})</label>
+              <span class="text-[11px] font-medium text-slate-500">Normal: ${range.min}–${range.max} ${p.unit}</span>
+            </div>
+            <div class="flex items-center gap-2.5">
+              <input
+                type="number"
+                step="${p.step}"
+                id="vinput-${p.key}"
+                data-param="${p.key}"
+                oninput="handleLiveVitalInput('${p.key}', this.value)"
+                placeholder="${p.placeholder}"
+                class="vital-param-input flex-1 px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-900 focus:border-teal-500 focus:outline-none"
+              />
+              <span id="vbadge-${p.key}" class="text-[11px] font-semibold px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 shrink-0 min-w-[104px] text-center">
+                Awaiting input
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function handleLiveVitalInput(paramKey, rawVal) {
+      const m = getActiveMember();
+      const age = calculateAge(m.dob);
+      const badge = document.getElementById(`vbadge-${paramKey}`);
+      if (!rawVal || rawVal.trim() === '') {
+        badge.className = 'text-[11px] font-semibold px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 shrink-0 min-w-[104px] text-center';
+        badge.textContent = 'Awaiting input';
+        return;
+      }
+      const ev = evaluateClinicalValue(paramKey, rawVal, age, m.gender);
+      if (ev) {
+        badge.className = `text-[11px] font-bold px-2.5 py-1.5 rounded-xl border shrink-0 min-w-[104px] text-center ${ev.badgeClass}`;
+        badge.textContent = ev.label;
+      }
+    }
+
+    function handleSaveVitals(event) {
+      event.preventDefault();
+      const m = getActiveMember();
+      if (!m) return;
+
+      const values = {};
+      let hasAnyValue = false;
+      document.querySelectorAll('.vital-param-input').forEach(inp => {
+        if (inp.value && inp.value.trim() !== '') {
+          values[inp.dataset.param] = parseFloat(inp.value);
+          hasAnyValue = true;
+        }
+      });
+
+      if (!hasAnyValue) {
+        showToast('Please enter at least one vital or lab reading', 'error');
+        return;
+      }
+
+      // Sync baseline weight/height on member profile if updated
+      if (values.weight) m.weight = values.weight;
+      if (values.height) m.height = values.height;
+
+      const newLog = {
+        id: 'v_' + Date.now(),
+        memberId: m.id,
+        timestamp: document.getElementById('vital-timestamp').value,
+        labName: document.getElementById('vital-lab-name').value.trim(),
+        driveUrl: document.getElementById('vital-drive-url').value.trim(),
+        notes: document.getElementById('vital-notes').value.trim(),
+        values
+      };
+
+      state.vitalsLogs.unshift(newLog);
+      saveState();
+
+      // Clear inputs
+      document.getElementById('vitals-form').reset();
+      document.getElementById('vital-timestamp').value = '';
+      showToast(`Saved clinical readings for ${m.name}`);
+      switchTab('dashboard');
+    }
+
+    /*************************************************************************
+     * 8. EPISODIC SYMPTOM, FEVER & MEDICATION TRACKER
+     *************************************************************************/
+    function selectSeverity(sev) {
+      state.selectedSeverity = sev;
+      document.querySelectorAll('.sev-btn').forEach(btn => {
+        const isSel = btn.dataset.sev === sev;
+        if (!isSel) {
+          btn.className = 'sev-btn py-2.5 rounded-xl text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-600';
+        } else if (sev === 'Mild') {
+          btn.className = 'sev-btn py-2.5 rounded-xl text-xs font-bold border border-emerald-300 bg-emerald-50 text-emerald-800';
+        } else if (sev === 'Moderate') {
+          btn.className = 'sev-btn py-2.5 rounded-xl text-xs font-bold border border-amber-300 bg-amber-50 text-amber-800';
+        } else {
+          btn.className = 'sev-btn py-2.5 rounded-xl text-xs font-bold border border-rose-300 bg-rose-50 text-rose-800';
+        }
+      });
+    }
+
+    function toggleSymptomChip(tag) {
+      const idx = state.selectedSymptoms.indexOf(tag);
+      if (idx > -1) state.selectedSymptoms.splice(idx, 1);
+      else state.selectedSymptoms.push(tag);
+      renderSymptomChips();
+    }
+
+    function renderSymptomChips() {
+      const container = document.getElementById('symptom-chips');
+      container.innerHTML = SYMPTOM_TAGS.map(tag => {
+        const active = state.selectedSymptoms.includes(tag);
+        return `
+          <button type="button" onclick="toggleSymptomChip('${tag}')" class="px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${
+            active
+              ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
+              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+          }">
+            ${active ? '<i class="fa-solid fa-check mr-1"></i>' : ''}${tag}
+          </button>
+        `;
+      }).join('');
+    }
+
+    function evaluateSymptomTemp(val) {
+      const badge = document.getElementById('sym-temp-live-badge');
+      if (!val) {
+        badge.textContent = 'Normal: 97.0–99.0 °F';
+        badge.className = 'text-[11px] font-semibold text-slate-400';
+        return;
+      }
+      const ev = evaluateClinicalValue('temp', val, 30, 'Male');
+      badge.textContent = `${ev.label} (${ev.rangeText})`;
+      badge.className = `text-[11px] font-bold ${ev.status === 'alert' ? 'text-rose-600' : (ev.status === 'borderline' ? 'text-amber-600' : 'text-emerald-600')}`;
+    }
+
+    function renderSymptomSection() {
+      const m = getActiveMember();
+      if (!m) return;
+      document.getElementById('symptom-form-member-name').textContent = m.name;
+
+      const tsInput = document.getElementById('sym-timestamp');
+      if (!tsInput.value) {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        tsInput.value = now.toISOString().slice(0, 16);
+      }
+
+      renderSymptomChips();
+
+      const memberSymptoms = state.symptomLogs
+        .filter(s => s.memberId === m.id)
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+      document.getElementById('symptom-count-badge').textContent = `${memberSymptoms.length} entries`;
+
+      // Update Last Medication Dose Timer Banner
+      const lastMedLog = memberSymptoms.find(s => s.medication && s.medication.trim() !== '');
+      if (lastMedLog) {
+        const diffMs = Date.now() - new Date(lastMedLog.timestamp).getTime();
+        const diffHrs = Math.max(0, Math.floor(diffMs / 3600000));
+        const diffMins = Math.max(0, Math.floor((diffMs % 3600000) / 60000));
+        document.getElementById('last-dose-title').textContent = `Last Med: ${lastMedLog.medication}`;
+        document.getElementById('last-dose-sub').textContent = `Given on ${new Date(lastMedLog.timestamp).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
+        document.getElementById('last-dose-elapsed').textContent = diffHrs > 48 ? `${Math.floor(diffHrs / 24)}d ago` : `${diffHrs}h ${diffMins}m ago`;
+      } else {
+        document.getElementById('last-dose-title').textContent = `No recent fever medication for ${m.name.split(' ')[0]}`;
+        document.getElementById('last-dose-sub').textContent = 'Log doses below to track safe intervals';
+        document.getElementById('last-dose-elapsed').textContent = '--';
+      }
+
+      const listEl = document.getElementById('symptom-timeline-list');
+      if (memberSymptoms.length === 0) {
+        listEl.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">No fever or symptom episodes logged for ${m.name}.</p>`;
+        return;
+      }
+
+      listEl.innerHTML = memberSymptoms.map(s => {
+        const dt = new Date(s.timestamp).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        const tempEval = s.temp ? evaluateClinicalValue('temp', s.temp, calculateAge(m.dob), m.gender) : null;
+        return `
+          <div class="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-extrabold text-slate-900">${s.episode}</span>
+              <span class="text-[11px] font-medium text-slate-500">${dt}</span>
+            </div>
+            <div class="flex items-center flex-wrap gap-2">
+              ${s.temp ? `<span class="text-xs font-bold px-2.5 py-0.5 rounded-full border ${tempEval.badgeClass}"><i class="fa-solid fa-temperature-three-quarters mr-1"></i>${s.temp} °F</span>` : ''}
+              <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700">${s.severity}</span>
+              ${(s.symptoms || []).map(tag => `<span class="text-[11px] px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600">${tag}</span>`).join('')}
+            </div>
+            ${s.medication ? `<div class="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-1.5 rounded-xl border border-indigo-100"><i class="fa-solid fa-pills mr-1.5"></i>Dose: ${s.medication}</div>` : ''}
+            ${s.notes ? `<p class="text-xs text-slate-600">${s.notes}</p>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function handleSaveSymptom(event) {
+      event.preventDefault();
+      const m = getActiveMember();
+      if (!m) return;
+
+      const tempVal = document.getElementById('sym-temp').value;
+      const entry = {
+        id: 's_' + Date.now(),
+        memberId: m.id,
+        episode: document.getElementById('sym-episode').value.trim() || 'Symptom Observation',
+        timestamp: document.getElementById('sym-timestamp').value,
+        temp: tempVal ? parseFloat(tempVal) : '',
+        severity: state.selectedSeverity,
+        symptoms: [...state.selectedSymptoms],
+        medication: document.getElementById('sym-med').value.trim(),
+        notes: document.getElementById('sym-notes').value.trim()
+      };
+
+      state.symptomLogs.unshift(entry);
+      state.selectedSymptoms = [];
+      saveState();
+
+      document.getElementById('sym-temp').value = '';
+      document.getElementById('sym-med').value = '';
+      document.getElementById('sym-notes').value = '';
+      document.getElementById('sym-timestamp').value = '';
+      showToast('Symptom & dose entry logged!');
+      renderSymptomSection();
+      renderHeroCard();
+    }
+
+    /*************************************************************************
+     * 9. FULL CLINICAL VAULT & HISTORY
+     *************************************************************************/
+    function renderHistoryVault() {
+      const m = getActiveMember();
+      if (!m) return;
+      document.getElementById('history-member-name').textContent = m.name;
+      const filter = document.getElementById('history-filter').value;
+      const age = calculateAge(m.dob);
+
+      let combined = [];
+      if (filter === 'all' || filter === 'vitals' || filter === 'alerts') {
+        state.vitalsLogs.filter(v => v.memberId === m.id).forEach(v => {
+          combined.push({ type: 'vital', timestamp: v.timestamp, data: v });
+        });
+      }
+      if (filter === 'all' || filter === 'symptoms' || filter === 'alerts') {
+        state.symptomLogs.filter(s => s.memberId === m.id).forEach(s => {
+          combined.push({ type: 'symptom', timestamp: s.timestamp, data: s });
+        });
+      }
+
+      combined.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+      if (filter === 'alerts') {
+        combined = combined.filter(item => {
+          if (item.type === 'vital') {
+            return Object.entries(item.data.values || {}).some(([k, val]) => {
+              const ev = evaluateClinicalValue(k, val, age, m.gender);
+              return ev && ev.status !== 'normal';
+            });
+          } else {
+            const ev = item.data.temp ? evaluateClinicalValue('temp', item.data.temp, age, m.gender) : null;
+            return ev && ev.status !== 'normal';
+          }
+        });
+      }
+
+      const container = document.getElementById('history-vault-list');
+      if (combined.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">No matching clinical records found.</p>`;
+        return;
+      }
+
+      container.innerHTML = combined.map(item => {
+        const dt = new Date(item.timestamp).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        if (item.type === 'vital') {
+          const v = item.data;
+          const badges = Object.entries(v.values || {}).map(([k, val]) => {
+            const def = CLINICAL_PARAMS[k];
+            if (!def) return '';
+            const ev = evaluateClinicalValue(k, val, age, m.gender);
+            return `<span class="text-[11px] font-bold px-2.5 py-1 rounded-xl border ${ev.badgeClass}">${def.label}: ${val} ${def.unit}</span>`;
+          }).join('');
+
+          return `
+            <div class="p-3.5 rounded-2xl border border-slate-200 bg-white space-y-2 shadow-xs">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="w-7 h-7 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center text-xs"><i class="fa-solid fa-vial"></i></span>
+                  <div>
+                    <div class="text-xs font-bold text-slate-900">${v.labName || 'Vitals & Lab Entry'}</div>
+                    <div class="text-[10px] text-slate-400">${dt}</div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  ${v.driveUrl ? `<a href="${v.driveUrl}" target="_blank" rel="noopener" class="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-bold hover:bg-blue-100"><i class="fa-brands fa-google-drive mr-1"></i>Report</a>` : ''}
+                  <button onclick="deleteRecord('vital', '${v.id}')" class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-1.5">${badges}</div>
+              ${v.notes ? `<p class="text-xs text-slate-500 italic">"${v.notes}"</p>` : ''}
+            </div>
+          `;
+        } else {
+          const s = item.data;
+          return `
+            <div class="p-3.5 rounded-2xl border border-amber-200/80 bg-amber-50/30 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-xs"><i class="fa-solid fa-temperature-high"></i></span>
+                  <div>
+                    <div class="text-xs font-bold text-slate-900">${s.episode} (${s.severity})</div>
+                    <div class="text-[10px] text-slate-400">${dt}</div>
+                  </div>
+                </div>
+                <button onclick="deleteRecord('symptom', '${s.id}')" class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center"><i class="fa-solid fa-trash-can text-xs"></i></button>
+              </div>
+              <div class="text-xs text-slate-700 font-medium">
+                ${s.temp ? `Temp: <span class="font-bold">${s.temp}°F</span> • ` : ''}
+                ${s.medication ? `Med: <span class="font-bold text-indigo-700">${s.medication}</span>` : 'No medication logged'}
+              </div>
+            </div>
+          `;
+        }
+      }).join('');
+    }
+
+    function deleteRecord(type, id) {
+      if (type === 'vital') state.vitalsLogs = state.vitalsLogs.filter(v => v.id !== id);
+      else state.symptomLogs = state.symptomLogs.filter(s => s.id !== id);
+      saveState();
+      renderAll();
+      showToast('Record deleted');
+    }
+
+    /*************************************************************************
+     * 10. FAMILY MEMBER MODAL (ADD / EDIT) & SETTINGS ROSTER
+     *************************************************************************/
+    function openMemberModal(memberId = null) {
+      const modal = document.getElementById('member-modal');
+      const form = document.getElementById('member-form');
+      form.reset();
+      state.tempPhotoDataUrl = '';
+      document.getElementById('mem-photo-preview').classList.add('hidden');
+      document.getElementById('mem-photo-placeholder').classList.remove('hidden');
+
+      if (memberId) {
+        const m = state.members.find(x => x.id === memberId);
+        if (m) {
+          document.getElementById('member-modal-title').textContent = 'Edit Family Profile';
+          document.getElementById('mem-id').value = m.id;
+          document.getElementById('mem-name').value = m.name;
+          document.getElementById('mem-relation').value = m.relation;
+          document.getElementById('mem-dob').value = m.dob;
+          document.getElementById('mem-gender').value = m.gender;
+          document.getElementById('mem-blood').value = m.bloodGroup;
+          document.getElementById('mem-height').value = m.height || '';
+          document.getElementById('mem-weight').value = m.weight || '';
+          document.getElementById('mem-mobile').value = m.mobile || '';
+          document.getElementById('mem-allergies').value = m.allergies || '';
+          document.getElementById('mem-conditions').value = m.conditions || '';
+          if (m.photo) {
+            state.tempPhotoDataUrl = m.photo;
+            const prev = document.getElementById('mem-photo-preview');
+            prev.src = m.photo;
+            prev.classList.remove('hidden');
+            document.getElementById('mem-photo-placeholder').classList.add('hidden');
+          }
+        }
+      } else {
+        document.getElementById('member-modal-title').textContent = 'Add Family Member';
+        document.getElementById('mem-id').value = '';
+      }
+      modal.classList.remove('hidden');
+    }
+
+    function closeMemberModal() {
+      document.getElementById('member-modal').classList.add('hidden');
+    }
+
+    function handleSaveMember(event) {
+      event.preventDefault();
+      const id = document.getElementById('mem-id').value;
+      const memberData = {
+        id: id || 'mem_' + Date.now(),
+        name: document.getElementById('mem-name').value.trim(),
+        relation: document.getElementById('mem-relation').value,
+        dob: document.getElementById('mem-dob').value,
+        gender: document.getElementById('mem-gender').value,
+        bloodGroup: document.getElementById('mem-blood').value,
+        height: parseFloat(document.getElementById('mem-height').value) || '',
+        weight: parseFloat(document.getElementById('mem-weight').value) || '',
+        mobile: document.getElementById('mem-mobile').value.trim(),
+        allergies: document.getElementById('mem-allergies').value.trim() || 'None',
+        conditions: document.getElementById('mem-conditions').value.trim() || 'None',
+        photo: state.tempPhotoDataUrl || ''
+      };
+
+      if (id) {
+        const idx = state.members.findIndex(m => m.id === id);
+        if (idx > -1) state.members[idx] = memberData;
+      } else {
+        state.members.push(memberData);
+        state.selectedMemberId = memberData.id;
+      }
+
+      saveState();
+      closeMemberModal();
+      renderAll();
+      showToast(`Saved profile for ${memberData.name}`);
+    }
+
+    function renderSettingsMembers() {
+      const container = document.getElementById('settings-member-list');
+      container.innerHTML = state.members.map(m => {
+        const age = calculateAge(m.dob);
+        const initials = m.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        return `
+          <div class="p-3 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-11 h-11 rounded-xl bg-teal-600 text-white font-bold text-sm flex items-center justify-center overflow-hidden shrink-0">
+                ${m.photo ? `<img src="${m.photo}" class="w-full h-full object-cover" />` : initials}
+              </div>
+              <div>
+                <div class="text-sm font-bold text-slate-900">${m.name}</div>
+                <div class="text-xs text-slate-500">${m.relation} • ${age}y (${m.gender}) • Blood ${m.bloodGroup}</div>
+              </div>
+            </div>
+            <button onclick="openMemberModal('${m.id}')" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-100">
+              Edit
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    /*************************************************************************
+     * 11. WHATSAPP DOCTOR SUMMARY & DATA EXPORT/IMPORT
+     *************************************************************************/
+    function shareWhatsAppSummary() {
+      const m = getActiveMember();
+      if (!m) return;
+      const summary = getMemberHealthSummary(m);
+      const latestEntries = Object.entries(summary.latestMap).map(([k, entry]) => {
+        const def = CLINICAL_PARAMS[k];
+        const ev = evaluateClinicalValue(k, entry.value, summary.age, m.gender);
+        const flag = ev.status === 'normal' ? '✅' : (ev.status === 'borderline' ? '⚠️' : '🚨');
+        return `${flag} *${def.label}:* ${entry.value} ${def.unit} (Normal: ${ev.rangeText})`;
+      });
+
+      const recentFever = state.symptomLogs
+        .filter(s => s.memberId === m.id)
+        .slice(0, 3)
+        .map(s => `• ${new Date(s.timestamp).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}: ${s.temp ? s.temp + '°F' : 'No temp'} | Med: ${s.medication || 'None'}`);
+
+      const lines = [
+        `*🩺 FAMILYCARE PRO — CLINICAL SUMMARY*`,
+        `*Patient:* ${m.name} (${summary.age}y / ${m.gender})`,
+        `*Blood Group:* ${m.bloodGroup} | *Allergies:* ${m.allergies || 'None'}`,
+        m.conditions && m.conditions !== 'None' ? `*Conditions:* ${m.conditions}` : '',
+        ``,
+        `*📊 Latest Vitals & Lab Readings:*`,
+        latestEntries.length ? latestEntries.join('\n') : '• No recent lab readings logged',
+        recentFever.length ? `\n*🌡️ Recent Symptom / Dose Log:*\n${recentFever.join('\n')}` : '',
+        `\n_Generated via FamilyCare Pro_`
+      ].filter(Boolean).join('\n');
+
+      window.open(`https://wa.me/?text=${encodeURIComponent(lines)}`, '_blank');
+    }
+
+    function exportDataJSON() {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `FamilyCarePro_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('JSON backup downloaded');
+    }
+
+    function exportDataCSV() {
+      const rows = [['Member', 'Type', 'Timestamp', 'Parameter/Episode', 'Value', 'Unit', 'Notes']];
+      state.vitalsLogs.forEach(v => {
+        const mName = state.members.find(m => m.id === v.memberId)?.name || v.memberId;
+        Object.entries(v.values || {}).forEach(([k, val]) => {
+          const def = CLINICAL_PARAMS[k];
+          rows.push([mName, 'Vital/Lab', v.timestamp, def?.label || k, val, def?.unit || '', v.notes || '']);
+        });
+      });
+      state.symptomLogs.forEach(s => {
+        const mName = state.members.find(m => m.id === s.memberId)?.name || s.memberId;
+        rows.push([mName, 'Symptom', s.timestamp, s.episode, s.temp || '', '°F', `${s.medication || ''} ${s.notes || ''}`.trim()]);
+      });
+      const csvContent = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `FamilyCarePro_Records_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('CSV spreadsheet downloaded');
+    }
+
+    function importDataJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (imported.members && Array.isArray(imported.members)) {
+            state.members = imported.members;
+            state.vitalsLogs = imported.vitalsLogs || [];
+            state.symptomLogs = imported.symptomLogs || [];
+            state.selectedMemberId = imported.selectedMemberId || state.members[0]?.id;
+            saveState();
+            renderAll();
+            showToast('Backup restored successfully!');
+          } else {
+            showToast('Invalid FamilyCare Pro backup file', 'error');
+          }
+        } catch (err) {
+          showToast('Error reading JSON file', 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function resetDemoData() {
+      const seed = getSeedData();
+      state.members = seed.members;
+      state.vitalsLogs = seed.vitalsLogs;
+      state.symptomLogs = seed.symptomLogs;
+      state.selectedMemberId = seed.selectedMemberId;
+      saveState();
+      renderAll();
+      showToast('Sample family data restored');
+    }
+
+    // Boot Application
+    window.addEventListener('DOMContentLoaded', () => {
+      loadState();
+      renderAll();
+    });
+  </script>
+</body>
+</html>
